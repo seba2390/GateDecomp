@@ -29,7 +29,7 @@ class QuantumGate:
         if as_dense:
             return matrix_exponential(A=-1j * time * self.matrix())
         else:
-            return csc_matrix(matrix_exponential(A=-1j * time * self.matrix()))
+            return csc_matrix(matrix_exponential(A=-1j * time * self.matrix(as_dense=False)))
 
 
 class PauliGate(QuantumGate):
@@ -87,8 +87,8 @@ class PauliExpression:
         for token in expression:
             if token not in self._allowed_tokens:
                 raise ValueError(f'Unrecognized token in expression, should be one of: {self._allowed_tokens}')
-        if expression[0] in self._arithmetic_operators_ or expression[-1] in self._arithmetic_operators_:
-            raise ValueError(f'expression should neither begin or end with any of: {self._arithmetic_operators_}')
+        if expression[0] in self._arithmetic_operators_.keys() or expression[-1] in self._arithmetic_operators_.keys():
+            raise ValueError(f'expression should neither begin or end with any of: {list(self._arithmetic_operators_.keys())}')
 
         self.expression = expression
         self._terms_ = []
@@ -124,6 +124,12 @@ class PauliExpression:
             return np.array(self._matrix_representation_.todense())
         else:
             return self._matrix_representation_
+
+    def time_evolution(self, time: float = 1.0, as_dense: bool = True):
+        if as_dense:
+            return matrix_exponential(A=-1j * time * self.matrix())
+        else:
+            return csc_matrix(matrix_exponential(A=-1j * time * self.matrix(as_dense=False)))
 
     def terms(self):
         return self._terms_
