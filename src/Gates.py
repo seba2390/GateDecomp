@@ -106,6 +106,11 @@ class PauliExpression:
                 empty = ''
         self._terms_.append(empty)
 
+        term_size = len(self._terms_[0])
+        for term in self._terms_:
+            if len(term) != term_size:
+                raise ValueError(f'Expression should only contain terms of equal length.')
+
         current_term_matrix = PauliGate(name=self._terms_[0]).matrix(as_dense=False)
         for remaining in range(len(self._terms_[1:])):
             operation_idx, term_idx = remaining, remaining + 1
