@@ -88,42 +88,44 @@ class PauliExpression:
             if token not in self._allowed_tokens:
                 raise ValueError(f'Unrecognized token in expression, should be one of: {self._allowed_tokens}')
         if expression[0] in self._arithmetic_operators_.keys() or expression[-1] in self._arithmetic_operators_.keys():
-            raise ValueError(f'expression should neither begin or end with any of: {list(self._arithmetic_operators_.keys())}')
+            raise ValueError(
+                f'expression should neither begin or end with any of: {list(self._arithmetic_operators_.keys())}')
 
         self.expression = expression
-        self._terms_ = []
+        self._terms_ = {}
         self._operations_ = []
-        self._matrix_representation_ = self._set_matrix_()
+        self._set_terms_and_operations_()
 
-    def _set_matrix_(self):
+    def _set_terms_and_operations_(self):
+
+        term_counter = 0
         empty = ''
         for token in self.expression:
             if token in self._known_gates_:
                 empty += token
             else:
                 self._operations_.append(token)
-                self._terms_.append(empty)
+                self._terms_[term_counter] = empty
+                term_counter += 1
                 empty = ''
-        self._terms_.append(empty)
+        self._terms_[term_counter] = empty
 
         term_size = len(self._terms_[0])
-        for term in self._terms_:
-            if len(term) != term_size:
+        for term_idx in list(self._terms_.keys()):
+            if len(self._terms_[term_idx]) != term_size:
                 raise ValueError(f'Expression should only contain terms of equal length.')
 
+    def matrix(self, as_dense: bool = True):
         current_term_matrix = PauliGate(name=self._terms_[0]).matrix(as_dense=False)
-        for remaining in range(len(self._terms_[1:])):
+        for remaining in range(len(list(self._terms_.keys())[1:])):
             operation_idx, term_idx = remaining, remaining + 1
             operation = self._operations_[operation_idx]
             matrix = PauliGate(name=self._terms_[term_idx]).matrix(as_dense=False)
             current_term_matrix = self._arithmetic_operators_[operation](current_term_matrix, matrix)
-        return current_term_matrix
-
-    def matrix(self, as_dense: bool = True):
         if as_dense:
-            return np.array(self._matrix_representation_.todense())
+            return np.array(current_term_matrix.todense())
         else:
-            return self._matrix_representation_
+            return current_term_matrix
 
     def time_evolution(self, time: float = 1.0, as_dense: bool = True):
         if as_dense:
@@ -136,3 +138,22 @@ class PauliExpression:
 
     def operations(self):
         return self._operations_
+
+    @staticmethod
+    def are_commuting(term1: str, term2: str) -> bool:
+        """See Chapter 4.3 of https://arxiv.org/abs/1907.13623"""
+        N_not_commuting = 0
+        for gate1, gate2 in zip(term1, term2):
+            if gate1 != gate2:
+                if gate1 != 'i' and gate1 != 'I' and gate2 != 'i' and gate2 != 'I':
+                    N_not_commuting += 1
+        return N_not_commuting % 2 == 0
+
+    def commutator_map(self):
+        _commutator_map_ = {}
+        N = len(list(self._terms_.keys()))
+        for term1_idx in range(N):
+            for term2_idx in range(term1_idx + 1, N):
+                _commutator_map_[(term1_idx, term2_idx)] = self.are_commuting(self._terms_[term1_idx],
+                                                                              self._terms_[term2_idx])
+        return _commutator_map_
