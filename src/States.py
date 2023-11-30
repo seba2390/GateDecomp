@@ -1,8 +1,31 @@
 import numpy as np
 
+
 class State:
-    __allowed_states__ = {'0': np.array([[1], [0]], dtype=np.complex64),
-                          '1': np.array([[0], [1]], dtype=np.complex64)}
+    # Pauli-z eigen basis.
+    __allowed_states__ = {
+        '0': np.array([[1], [0]], dtype=np.complex64),
+        '1': np.array([[0], [1]], dtype=np.complex64)
+    }
+
+    # First element in list has eigenvalue +1, and second has eigenvalue -1.
+    __basis_vectors__ = {
+        'Z': [__allowed_states__['0'], __allowed_states__['1']],
+        'X': [1. / np.sqrt(2) * np.array([[1], [1]], dtype=np.complex64),
+              1. / np.sqrt(2) * np.array([[1], [-1]], dtype=np.complex64)],
+        'Y': [1. / np.sqrt(2) * np.array([[1], [1j]], dtype=np.complex64),
+              1. / np.sqrt(2) * np.array([[1], [-1j]], dtype=np.complex64)]
+    }
+
+    # Corresponding projection operators
+    __projectors__ = {
+        'Z': [__basis_vectors__['Z'][0] @ __basis_vectors__['Z'][0].T,
+              __basis_vectors__['Z'][1] @ __basis_vectors__['Z'][1].T],
+        'X': [__basis_vectors__['X'][0] @ __basis_vectors__['X'][0].T,
+              __basis_vectors__['X'][1] @ __basis_vectors__['X'][1].T],
+        'Y': [__basis_vectors__['Y'][0] @ __basis_vectors__['Y'][0].T,
+              __basis_vectors__['Y'][1] @ __basis_vectors__['Y'][1].T]
+    }
 
     def __init__(self, name: str, scaling: float = 1.0):
         if not isinstance(name, str):
@@ -43,4 +66,3 @@ class State:
             raise ValueError("Operator must be a square matrix of the same dimension as the state vector.")
         psi_f = np.dot(operator, self._state_vector_).flatten()
         return np.dot(self._state_vector_.flatten().conj(), psi_f)
-
