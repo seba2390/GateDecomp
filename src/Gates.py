@@ -3,6 +3,8 @@ from scipy.sparse import csc_matrix, coo_matrix
 from scipy.sparse import kron as tensor_product
 from scipy.sparse.linalg import expm as matrix_exponential
 
+import warnings
+
 
 class QuantumGate:
     def __init__(self, name: str, scaling: float = 1.0):
@@ -157,3 +159,15 @@ class PauliExpression:
                 _commutator_map_[(term1_idx, term2_idx)] = self.are_commuting(self._terms_[term1_idx],
                                                                               self._terms_[term2_idx])
         return _commutator_map_
+
+    def expectation(self, state_vector: np.ndarray):
+        O = self.matrix()
+        # Check if the matrix is Hermitian
+        if not np.all(O == O.T) or not np.all(np.isreal(O)):
+            warnings.warn('Note that matrix is not Hermitian', RuntimeWarning)
+
+        # Check if the state vector is physical
+        if not np.isclose(np.sum(np.abs(state_vector) ** 2), 1.0):
+            warnings.warn('Note that state vector is not physical -> sum_i |c_i|^2 != 1', RuntimeWarning)
+
+        return float(np.real_if_close(state_vector.T.conj() @ (O @ state_vector)))
